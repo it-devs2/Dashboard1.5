@@ -706,6 +706,10 @@ const setupEventListeners = () => {
     if (payDocUrgencyFilter) {
         payDocUrgencyFilter.addEventListener('change', updateDateSummary);
     }
+    const payDocCategoryFilter = document.getElementById('payDocCategoryFilter');
+    if (payDocCategoryFilter) {
+        payDocCategoryFilter.addEventListener('change', updateDateSummary);
+    }
 
     // Advanced search segmented control and filter panel
     const segButtons = document.querySelectorAll('.seg-btn');
@@ -1702,6 +1706,7 @@ const updateDateSummary = () => {
     const payDocYearVal = document.getElementById('payDocYearFilter')?.value || 'all';
     const payDocCreditorVal = document.getElementById('payDocCreditorFilter')?.value.toLowerCase() || '';
     const payDocUrgencyVal = document.getElementById('payDocUrgencyFilter')?.value || 'all';
+    const payDocCategoryVal = document.getElementById('payDocCategoryFilter')?.value || 'all';
 
     // Filter from ALL data (independent from top filters) by paymentStatus + payDoc month/year
     // Also include new creditor search and urgency filters.
@@ -1721,8 +1726,9 @@ const updateDateSummary = () => {
         }
             
         const matchUrgency = payDocUrgencyVal === 'all' || (item.status && item.status.toString().trim() === payDocUrgencyVal);
+        const matchCategory = payDocCategoryVal === 'all' || (item.category && item.category === payDocCategoryVal);
 
-        return matchStatus && matchMonth && matchYear && matchCreditor && matchUrgency;
+        return matchStatus && matchMonth && matchYear && matchCreditor && matchUrgency && matchCategory;
     });
 
     // Group data by payDoc date (column H)
