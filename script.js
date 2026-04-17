@@ -147,7 +147,7 @@ const init = async () => {
 let lastDetailsItems = [];
 let lastDateDetailItems = []; // New for Date Detail Modal
 
-// Populate grouped summary table (One row per creditor) - Simplified to be reusable
+// Populate grouped summary table (One row per creditor + month + year) - Simplified to be reusable
 function populateGroupedDetailsTable(items = [], tbodyId = 'detailsTableBody', tfootId = 'detailsTableFooter', btnViewItemsId = 'btnViewItems') {
     const detailsTableBody = document.getElementById(tbodyId);
     const detailsTableFooter = document.getElementById(tfootId);
@@ -158,13 +158,15 @@ function populateGroupedDetailsTable(items = [], tbodyId = 'detailsTableBody', t
         table.classList.add('grouped-mode');
     }
 
-    // Change Table Header for Summary View
+    // Change Table Header for Summary View — now with Month Due & Year columns
     if (detailsTableHeader) {
         detailsTableHeader.innerHTML = `
             <tr>
-                <th style="text-align: left; width: 60%;">ชื่อเจ้าหนี้</th>
+                <th style="text-align: left; width: 40%;">ชื่อเจ้าหนี้</th>
+                <th style="text-align: center; width: 14%;">Month Due</th>
+                <th style="text-align: center; width: 10%;">Year</th>
                 <th style="text-align: center !important; width: 12%;">จำนวนรายการ</th>
-                <th style="text-align: right; width: 28%;">ยอดเงินรวม</th>
+                <th style="text-align: right; width: 24%;">ยอดเงินรวม</th>
             </tr>
         `;
     }
@@ -173,23 +175,42 @@ function populateGroupedDetailsTable(items = [], tbodyId = 'detailsTableBody', t
     detailsTableFooter.innerHTML = '';
 
     if (!items || items.length === 0) {
-        detailsTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 32px; color: var(--text-muted);">ไม่มีข้อมูล</td></tr>`;
+        detailsTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 32px; color: var(--text-muted);">ไม่มีข้อมูล</td></tr>`;
         return;
     }
 
-    // Aggregate by docNo (which contains the Name in this spreadsheet)
+    // Aggregate by docNo + monthDue + yearDue (creditor name + month + year)
     const groups = {};
     items.forEach(it => {
-        const key = it.docNo || 'ไม่ระบุชื่อ'; // Using docNo because it currently holds the Creditor Names
+        const name = it.docNo || 'ไม่ระบุชื่อ';
+        const month = it.monthDue || '-';
+        const year = it.yearDue || '-';
+        const key = `${name}|||${month}|||${year}`;
         const amt = Number(it.amount) || 0;
-        if (!groups[key]) groups[key] = { total: 0, count: 0 };
+        if (!groups[key]) groups[key] = { name, month, year, total: 0, count: 0 };
         groups[key].total += amt;
         groups[key].count += 1;
     });
 
-    const sortedGroups = Object.entries(groups)
-        .map(([name, data]) => ({ name, ...data }))
-        .sort((a, b) => (b.total - a.total) || (b.count - a.count));
+    const sortedGroups = Object.values(groups)
+        .sort((a, b) => {
+            // Sort by creditor name ascending (group same names together)
+            const nameCompare = a.name.localeCompare(b.name, 'th');
+            if (nameCompare !== 0) return nameCompare;
+            // Then by year ascending
+            const yearA = parseInt(a.year) || 9999;
+            const yearB = parseInt(b.year) || 9999;
+            if (yearA !== yearB) return yearA - yearB;
+            // Then by month ascending
+            const monthA = monthMap[a.month] || 99;
+            const monthB = monthMap[b.month] || 99;
+            if (monthA !== monthB) return monthA - monthB;
+            // Then by total descending
+            return (b.total - a.total) || (b.count - a.count);
+        });
+
+    // Count unique creditor names
+    const uniqueCreditors = new Set(sortedGroups.map(g => g.name));
 
     let grandTotal = 0;
     sortedGroups.forEach(g => {
@@ -198,12 +219,19 @@ function populateGroupedDetailsTable(items = [], tbodyId = 'detailsTableBody', t
         tr.className = 'summary-row-clickable';
         tr.innerHTML = `
             <td style="text-align: left; font-weight: 700; color: #fff;">${g.name}</td>
+            <td style="text-align: center; color: var(--accent-primary); font-weight: 600;">${g.month}</td>
+            <td style="text-align: center; color: var(--text-muted);">${g.year}</td>
             <td style="text-align: center; color: var(--text-muted);">${g.count} รายการ</td>
             <td style="text-align: right; color: var(--color-total); font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums;">${formatCurrency(g.total)}</td>
         `;
-        // Drill-down: Click row to see details for this creditor
+        // Drill-down: Click row to see details for this creditor + month + year
         tr.addEventListener('click', () => {
-            const creditorItems = items.filter(it => (it.docNo || 'ไม่ระบุชื่อ') === g.name);
+            const creditorItems = items.filter(it => {
+                const itName = it.docNo || 'ไม่ระบุชื่อ';
+                const itMonth = it.monthDue || '-';
+                const itYear = it.yearDue || '-';
+                return itName === g.name && itMonth === g.month && itYear === g.year;
+            });
             const btnViewItems = document.getElementById(btnViewItemsId);
             if (btnViewItems) btnViewItems.click(); // Switch back to items view
             populateDetailsTable(creditorItems, tbodyId, tfootId);
@@ -215,7 +243,7 @@ function populateGroupedDetailsTable(items = [], tbodyId = 'detailsTableBody', t
     const totalTr = document.createElement('tr');
     totalTr.className = 'total-row-summary';
     totalTr.innerHTML = `
-        <td colspan="2" class="total-label">ยอดยกมาทั้งหมด (${sortedGroups.length} ราย):</td>
+        <td colspan="4" class="total-label">ยอดยกมาทั้งหมด (${uniqueCreditors.size} ราย / ${sortedGroups.length} รายการ):</td>
         <td class="total-amount-val">${formatCurrency(grandTotal)}</td>
     `;
     detailsTableFooter.appendChild(totalTr);
@@ -680,7 +708,7 @@ const setupEventListeners = () => {
                 updateDateSummary();
             });
         }
-        
+
         // Ensure outside clicks reliably close all specific dropdowns
         document.addEventListener('click', (e) => {
             const creditorSearch = document.querySelector('.filter-group.header-search');
@@ -916,7 +944,7 @@ const openDetailsModal = (type) => {
     const totalSum = items.reduce((s, it) => s + (Number(it.amount) || 0), 0);
     const finalTitle = `ประเภทรายงาน: ${config.text} (ยอดรวมทั้งหมด: ${formatCurrency(totalSum)})`;
     detailsModalTitle.innerText = finalTitle;
-    
+
     // Append the Category to the Print Header Title if it is not "all"
     const catVal = document.getElementById('categoryFilter') ? document.getElementById('categoryFilter').value : 'all';
     const catText = catVal !== 'all' ? ` - ${catVal}` : '';
@@ -1134,7 +1162,7 @@ const fetchData = async () => {
             }
             creditorData = creditors;
             renderCreditorDropdown(creditors);
-            
+
             // Populate bottom multi-select creditor dropdown and urgency filter
             renderPayDocCreditorDropdown(creditors);
             populateUrgencyDropdown(allData);
@@ -1284,12 +1312,12 @@ function closeCreditorDropdown() {
 function closeAllDropdowns(exceptId = '') {
     // Current dropdown and panel IDs that should be mutually exclusive
     const dropdownIds = [
-        'creditorDropdown', 
-        'overdueDropdown', 
+        'creditorDropdown',
+        'overdueDropdown',
         'payDocCreditorDropdown',
         'advFilterPanel' // Including advanced filter panel if it exists
     ];
-    
+
     dropdownIds.forEach(id => {
         if (id !== exceptId) {
             const dd = document.getElementById(id);
@@ -1297,7 +1325,7 @@ function closeAllDropdowns(exceptId = '') {
                 // Handle both .hidden and manual .style.display if necessary, 
                 // but usually 'hidden' attribute is used here.
                 dd.hidden = true;
-                
+
                 // If it's the advanced filter button, sync its aria-expanded state
                 if (id === 'advFilterPanel') {
                     const btn = document.getElementById('advFilterBtn');
@@ -1497,7 +1525,7 @@ function updateHeaderSpacing() {
         document.getElementById('advFilterPanel'),
         document.getElementById('overdueDropdown')
     ].filter(Boolean);
-    
+
     const topNav = document.querySelector('.top-nav');
     if (!topNav) return;
 
@@ -1714,17 +1742,17 @@ const updateDateSummary = () => {
         const matchStatus = payDocStatusVal === 'all' || (item.paymentStatus && item.paymentStatus.toString().includes(payDocStatusVal));
         const matchMonth = payDocMonthVal === 'all' || (item.payDocMonth && item.payDocMonth === payDocMonthVal);
         const matchYear = payDocYearVal === 'all' || (item.payDocYear && parseInt(item.payDocYear) === parseInt(payDocYearVal));
-        
+
         // Creditor match: support both typing AND multi-select chips
         let matchCreditor = true;
         if (selectedPayDocCreditors.size > 0) {
             matchCreditor = selectedPayDocCreditors.has(item.docNo);
         } else {
-            matchCreditor = payDocCreditorVal === '' || 
+            matchCreditor = payDocCreditorVal === '' ||
                 (item.docNo && item.docNo.toLowerCase().includes(payDocCreditorVal)) ||
                 (item.creditor && item.creditor.toLowerCase().includes(payDocCreditorVal));
         }
-            
+
         const matchUrgency = payDocUrgencyVal === 'all' || (item.status && item.status.toString().trim() === payDocUrgencyVal);
         const matchCategory = payDocCategoryVal === 'all' || (item.category && item.category === payDocCategoryVal);
 
@@ -1881,7 +1909,7 @@ const openDateDetailModal = (dateKey) => {
     populateDetailsTable(items, 'dateDetailTableBody', 'dateDetailTableFooter');
 
     const totalSum = items.reduce((s, it) => s + (Number(it.amount) || 0), 0);
-    
+
     // Get currently selected status and urgency text for the title
     const statusFilter = document.getElementById('payDocStatusFilter');
     const statusText = statusFilter ? statusFilter.options[statusFilter.selectedIndex].text : '';
@@ -1899,7 +1927,7 @@ const openDateDetailModal = (dateKey) => {
     const printTitleText = `สรุปรายการเบิกจ่ายประจำวันที่: ${dateKey}${statusSuffix}`;
 
     title.innerText = finalTitleText;
-    
+
     // For printing: Use a more structured, professional layout
     const pTitle = document.getElementById('printDateReportTitle');
     const pSubtitle = document.getElementById('printDateReportSubtitle');
@@ -1922,7 +1950,7 @@ const openDateDetailModal = (dateKey) => {
 const exportDatePDF = () => {
     const now = new Date();
     const docId = `PAY-${now.getTime().toString().slice(-6)}`;
-    const dateStr = formatThaiDateTime(now); 
+    const dateStr = formatThaiDateTime(now);
 
     const printDocId = document.getElementById('printDocIdGlobal');
     const printIssueDate = document.getElementById('printIssueDateGlobal');
@@ -2030,7 +2058,7 @@ window.addEventListener('resize', () => {
 // Before printing, clear inline font sizes so print CSS can wrap naturally.
 window.addEventListener('beforeprint', () => {
     document.querySelectorAll('.status-text').forEach(el => el.style.fontSize = '');
-    
+
     // Adjust colspan for Detailed Table because we hide the Category column (4th) in CSS during print
     const detailsTotalLabel = document.querySelector('#detailsTableFooter .total-label');
     if (detailsTotalLabel && detailsTotalLabel.getAttribute('colspan') === '6') {
@@ -2048,7 +2076,7 @@ window.addEventListener('beforeprint', () => {
 window.addEventListener('afterprint', () => {
     // restore shrink after printing
     setTimeout(() => shrinkStatusTextToFit(), 80);
-    
+
     // Restore colspan for details table
     const detailsTotalLabel = document.querySelector('#detailsTableFooter .total-label');
     if (detailsTotalLabel && detailsTotalLabel.dataset.changedForPrint === 'true') {
