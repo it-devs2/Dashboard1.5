@@ -189,7 +189,7 @@
                         <div class="card-icon"><i class='bx bx-check-circle'></i></div>
                         <div class="card-info">
                             <h3>จ่ายตรงดิว</h3>
-                            <h2 id="ontimeAmount">฿ 0.00</h2>
+                            <h2 id="ontimeAmount">0.00</h2>
                             <p id="ontimePercent" class="percent-text">คิดเป็น 0%</p>
                             <button class="details-btn" data-status="ontime">ดูข้อมูลเพิ่มเติม <i
                                     class='bx bx-right-arrow-alt'></i></button>
@@ -199,7 +199,7 @@
                         <div class="card-icon"><i class='bx bx-calendar-star'></i></div>
                         <div class="card-info">
                             <h3>จ่ายก่อนกำหนด</h3>
-                            <h2 id="earlyAmount">฿ 0.00</h2>
+                            <h2 id="earlyAmount">0.00</h2>
                             <p id="earlyPercent" class="percent-text">คิดเป็น 0%</p>
                             <button class="details-btn" data-status="early">ดูข้อมูลเพิ่มเติม <i
                                     class='bx bx-right-arrow-alt'></i></button>
@@ -209,7 +209,7 @@
                         <div class="card-icon"><i class='bx bx-error'></i></div>
                         <div class="card-info">
                             <h3>จ่ายเกินกำหนด</h3>
-                            <h2 id="overdueAmount">฿ 0.00</h2>
+                            <h2 id="overdueAmount">0.00</h2>
                             <p id="overduePercent" class="percent-text">คิดเป็น 0%</p>
                             <button class="details-btn" data-status="overdue">ดูข้อมูลเพิ่มเติม <i
                                     class='bx bx-right-arrow-alt'></i></button>
@@ -222,7 +222,7 @@
                         <div class="card-total-inner">
                             <div class="card-icon"><i class='bx bx-wallet'></i></div>
                             <h3>รวมรายจ่ายทั้งหมด</h3>
-                            <h2 id="totalAmount">฿ 0.00</h2>
+                            <h2 id="totalAmount">0.00</h2>
                             <p id="totalPercent" class="percent-text">คิดเป็น 100%</p>
                         </div>
                     </div>
@@ -233,7 +233,7 @@
                         <div class="card-icon"><i class='bx bx-calendar-x'></i></div>
                         <div class="card-info">
                             <h3>ยังไม่กำหนดวันจ่าย</h3>
-                            <h2 id="nodateAmount">฿ 0.00</h2>
+                            <h2 id="nodateAmount">0.00</h2>
                             <p id="nodatePercent" class="percent-text">คิดเป็น 0%</p>
                             <button class="details-btn" data-status="nodate">ดูข้อมูลเพิ่มเติม <i
                                     class='bx bx-right-arrow-alt'></i></button>
@@ -243,7 +243,7 @@
                         <div class="card-icon"><i class='bx bx-time'></i></div>
                         <div class="card-info">
                             <h3>ยังไม่ถึงกำหนด</h3>
-                            <h2 id="notdueAmount">฿ 0.00</h2>
+                            <h2 id="notdueAmount">0.00</h2>
                             <p id="notduePercent" class="percent-text">คิดเป็น 0%</p>
                             <button class="details-btn" data-status="notdue">ดูข้อมูลเพิ่มเติม <i
                                     class='bx bx-right-arrow-alt'></i></button>
@@ -253,7 +253,7 @@
                         <div class="card-icon"><i class='bx bx-hourglass'></i></div>
                         <div class="card-info">
                             <h3>เกินกำหนด (รอพิจารณา)</h3>
-                            <h2 id="pendingAmount">฿ 0.00</h2>
+                            <h2 id="pendingAmount">0.00</h2>
                             <p id="pendingPercent" class="percent-text">คิดเป็น 0%</p>
                             <button class="details-btn" data-status="pending">ดูข้อมูลเพิ่มเติม <i
                                     class='bx bx-right-arrow-alt'></i></button>
@@ -614,6 +614,10 @@
     </div>
 
     <script src="script.js"></script>
+    <!-- Floating action button (fixed bottom-right) -->
+    <button id="floatingOpenSheetBtn" class="fab" aria-label="เปิด Google Sheets" title="เปิด Google Sheets">
+        <i class='bx bxl-google'></i>
+    </button>
 </body>
 
 </html>

@@ -3,6 +3,8 @@
  * ให้คุณใส่ URL ของ Web App จาก Google Apps Script ตรงนี้
  */
 const GOOGLE_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlT9ZOGKz4RgD3Np19SRAVOTNOAd9C-HGbsUFA-F2g-GGU5Th5zpwP2mYnEf4pI7Xe/exec';
+// Optional: link to the Google Sheets UI (set this to your spreadsheet URL if you want a direct link)
+const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1DQ5cBiusMosPtpxOJeO_1lRyf19uvT9Le18__YucbKk/edit?gid=391257604#gid=391257604'
 
 
 // ตัวแปรเก็บข้อมูลทั้งหมดจาก Google Sheets
@@ -54,9 +56,9 @@ const formatThaiDateTime = (date) => {
 // Format numbers as Thai Baht currency
 const formatCurrency = (number) => {
     return new Intl.NumberFormat('th-TH', {
-        style: 'currency',
-        currency: 'THB',
-        minimumFractionDigits: 2
+        style: 'decimal',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
     }).format(number);
 };
 
@@ -155,7 +157,8 @@ function populateGroupedDetailsTable(items = [], tbodyId = 'detailsTableBody', t
     const detailsTableHeader = table ? table.querySelector('thead') : null;
 
     if (table) {
-        table.classList.add('grouped-mode');
+        table.classList.remove('grouped-mode');
+        table.classList.add('grouped-mode-5col');
     }
 
     // Change Table Header for Summary View — now with Month Due & Year columns
@@ -163,10 +166,10 @@ function populateGroupedDetailsTable(items = [], tbodyId = 'detailsTableBody', t
         detailsTableHeader.innerHTML = `
             <tr>
                 <th style="text-align: left; width: 40%;">ชื่อเจ้าหนี้</th>
-                <th style="text-align: center; width: 14%;">Month Due</th>
-                <th style="text-align: center; width: 10%;">Year</th>
+                <th style="text-align: center; width: 18%;">Month Due</th>
+                <th style="text-align: center; width: 6%;">Year</th>
                 <th style="text-align: center !important; width: 12%;">จำนวนรายการ</th>
-                <th style="text-align: right; width: 24%;">ยอดเงินรวม</th>
+                <th style="text-align: right; width: 24%;">ยอดเงินรวม (฿)</th>
             </tr>
         `;
     }
@@ -265,7 +268,7 @@ function populateCategoryDetailsTable(items = []) {
             <tr>
                 <th style="text-align: left; width: 60%;">หมวดหมู่</th>
                 <th style="text-align: center !important; width: 12%;">จำนวนรายการ</th>
-                <th style="text-align: right; width: 28%;">ยอดเงินรวม</th>
+                <th style="text-align: right; width: 28%;">ยอดเงินรวม (฿)</th>
             </tr>
         `;
     }
@@ -330,7 +333,7 @@ function populateDetailsTable(items = [], tbodyId = 'detailsTableBody', tfootId 
     const detailsTableHeader = table ? table.querySelector('thead') : null;
 
     if (table) {
-        table.classList.remove('grouped-mode');
+        table.classList.remove('grouped-mode', 'grouped-mode-5col');
     }
 
     // Restore Original Table Header for Detailed View
@@ -343,7 +346,7 @@ function populateDetailsTable(items = [], tbodyId = 'detailsTableBody', tfootId 
                 <th style="text-align: left;">หมวดหมู่</th>
                 <th style="text-align: left;">วันที่ครบกำหนดชำระ</th>
                 <th style="text-align: center; white-space: nowrap;">ระยะเวลา</th>
-                <th style="text-align: right;">จำนวนเงิน</th>
+                <th style="text-align: right;">จำนวนเงิน (฿)</th>
             </tr>
         `;
     }
@@ -554,10 +557,10 @@ const setupEventListeners = () => {
             updateDashboard({ skipDateSummary: true });
         });
 
-        // open dropdown only when user explicitly clicks the input (forceOpen)
+        // don't open dropdown on mere click — show suggestions only when typing
         creditorFilter.addEventListener('click', (e) => {
             e.stopPropagation();
-            filterCreditorDropdown(e.target.value || '', true);
+            filterCreditorDropdown(e.target.value || '', false);
         });
 
         // show / hide clear button and wire its behavior
@@ -676,7 +679,7 @@ const setupEventListeners = () => {
     const payDocUrgencyFilter = document.getElementById('payDocUrgencyFilter');
     const payDocClearSelection = document.getElementById('payDocClearSelection');
 
-    if (payDocCreditorFilter) {
+        if (payDocCreditorFilter) {
         payDocCreditorFilter.addEventListener('input', (e) => {
             const q = e.target.value || '';
             filterPayDocCreditorDropdown(q, false);
@@ -686,7 +689,7 @@ const setupEventListeners = () => {
 
         payDocCreditorFilter.addEventListener('click', (e) => {
             e.stopPropagation();
-            filterPayDocCreditorDropdown(e.target.value || '', true);
+            filterPayDocCreditorDropdown(e.target.value || '', false);
         });
 
         if (payDocSearchClear) {
@@ -831,6 +834,27 @@ const setupEventListeners = () => {
             await fetchData();
         }
     });
+
+    // Open Google Sheets button (direct to Spreadsheet UI if configured,
+    // otherwise fallback to Apps Script web app endpoint or show setup modal)
+    // (header openSheetBtn removed) — floating FAB below still handles opening the sheet
+    // Floating button (bottom-right) opens the same target as header button
+    const floatingOpenSheetBtn = document.getElementById('floatingOpenSheetBtn');
+    if (floatingOpenSheetBtn) {
+        floatingOpenSheetBtn.addEventListener('click', (e) => {
+            if (GOOGLE_SHEET_URL && GOOGLE_SHEET_URL.trim() !== '') {
+                window.open(GOOGLE_SHEET_URL, '_blank', 'noopener');
+                return;
+            }
+            if (GOOGLE_APP_SCRIPT_URL && GOOGLE_APP_SCRIPT_URL !== 'YOUR_WEB_APP_URL_HERE') {
+                window.open(GOOGLE_APP_SCRIPT_URL, '_blank', 'noopener');
+                return;
+            }
+            alert('กรุณาตั้งค่า `GOOGLE_SHEET_URL` หรือ `GOOGLE_APP_SCRIPT_URL` ในไฟล์ script.js ก่อนครับ');
+            const modal = document.getElementById('setupModal');
+            if (modal) modal.classList.remove('hidden');
+        });
+    }
 
     // Modal Close
     const modal = document.getElementById('setupModal');
@@ -1203,18 +1227,26 @@ function populateUrgencyDropdown(data) {
 
 
 // ---- Creditor dropdown helpers ----
-function renderCreditorDropdown(list = []) {
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (s) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s];
+    });
+}
+
+function renderCreditorDropdown(list = [], query = '') {
     const panel = document.getElementById('creditorListPanel');
     if (!panel) return;
     panel.innerHTML = '';
     if (!list || list.length === 0) {
-        panel.innerHTML = '<div class="creditor-empty">ไม่พบชื่อเจ้าหนี้</div>';
+        panel.innerHTML = '<div class="creditor-empty"><i class="bx bx-search-alt" style="font-size:24px;display:block;margin-bottom:6px;opacity:0.4;"></i>ไม่พบชื่อเจ้าหนี้</div>';
         return;
     }
+    const q = (query || '').toString().trim().toLowerCase();
     const frag = document.createDocumentFragment();
     list.forEach((name, idx) => {
         const label = document.createElement('label');
         label.className = 'creditor-item';
+        if (selectedCreditors.has(name)) label.classList.add('is-checked');
 
         const chk = document.createElement('input');
         chk.type = 'checkbox';
@@ -1223,11 +1255,30 @@ function renderCreditorDropdown(list = []) {
         chk.id = `creditor_chk_${idx}`;
         if (selectedCreditors.has(name)) chk.checked = true;
 
+        // Custom checkbox visual element
+        const chkVisual = document.createElement('span');
+        chkVisual.className = 'checkbox-visual';
+
         const span = document.createElement('span');
         span.className = 'creditor-name';
-        span.textContent = name;
+
+        if (q.length > 0) {
+            const low = (name || '').toString().toLowerCase();
+            const i = low.indexOf(q);
+            if (i >= 0) {
+                const before = escapeHtml(name.slice(0, i));
+                const matchText = escapeHtml(name.slice(i, i + q.length));
+                const after = escapeHtml(name.slice(i + q.length));
+                span.innerHTML = `${before}<span class="match">${matchText}</span>${after}`;
+            } else {
+                span.textContent = name;
+            }
+        } else {
+            span.textContent = name;
+        }
 
         label.appendChild(chk);
+        label.appendChild(chkVisual);
         label.appendChild(span);
         frag.appendChild(label);
     });
@@ -1237,18 +1288,54 @@ function renderCreditorDropdown(list = []) {
     panel.querySelectorAll('.creditor-checkbox').forEach(cb => {
         cb.addEventListener('change', (e) => {
             const nm = e.target.dataset.name;
-            if (e.target.checked) selectedCreditors.add(nm);
-            else selectedCreditors.delete(nm);
+            const parentLabel = e.target.closest('.creditor-item');
+            if (e.target.checked) {
+                selectedCreditors.add(nm);
+                if (parentLabel) parentLabel.classList.add('is-checked');
+            } else {
+                selectedCreditors.delete(nm);
+                if (parentLabel) parentLabel.classList.remove('is-checked');
+            }
             updateSelectedChips();
+            updateCreditorCountBadge('creditorDropdown');
             updateDashboard({ skipDateSummary: true });
         });
     });
+
+    // Update count badge
+    updateCreditorCountBadge('creditorDropdown');
+}
+
+// Update selected count badge in a given dropdown
+function updateCreditorCountBadge(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    const header = dropdown.querySelector('.creditor-dropdown-header');
+    if (!header) return;
+
+    let badge = header.querySelector('.selected-count-badge');
+    let count = 0;
+    if (dropdownId === 'creditorDropdown') count = selectedCreditors.size;
+    else if (dropdownId === 'payDocCreditorDropdown') count = selectedPayDocCreditors.size;
+
+    if (count > 0) {
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'selected-count-badge';
+            const strong = header.querySelector('strong');
+            if (strong) strong.after(badge);
+            else header.prepend(badge);
+        }
+        badge.textContent = `เลือก ${count} รายการ`;
+    } else {
+        if (badge) badge.remove();
+    }
 }
 
 function filterCreditorDropdown(q = '', forceOpen = false) {
     const query = (q || '').toString().trim().toLowerCase();
     const filtered = creditorData.filter(n => n.toLowerCase().includes(query));
-    renderCreditorDropdown(filtered);
+    renderCreditorDropdown(filtered, q);
     const dropdown = document.getElementById('creditorDropdown');
     if (!dropdown) return;
     // Only open the dropdown when forced (user clicked) or when user typed something (query length > 0)
@@ -1338,18 +1425,20 @@ function closeAllDropdowns(exceptId = '') {
 }
 
 // ---- Date Summary Creditor dropdown helpers ----
-function renderPayDocCreditorDropdown(list = []) {
+function renderPayDocCreditorDropdown(list = [], query = '') {
     const panel = document.getElementById('payDocCreditorListPanel');
     if (!panel) return;
     panel.innerHTML = '';
     if (!list || list.length === 0) {
-        panel.innerHTML = '<div class="creditor-empty">ไม่พบชื่อเจ้าหนี้</div>';
+        panel.innerHTML = '<div class="creditor-empty"><i class="bx bx-search-alt" style="font-size:24px;display:block;margin-bottom:6px;opacity:0.4;"></i>ไม่พบชื่อเจ้าหนี้</div>';
         return;
     }
+    const q = (query || '').toString().trim().toLowerCase();
     const frag = document.createDocumentFragment();
     list.forEach((name, idx) => {
         const label = document.createElement('label');
         label.className = 'creditor-item';
+        if (selectedPayDocCreditors.has(name)) label.classList.add('is-checked');
 
         const chk = document.createElement('input');
         chk.type = 'checkbox';
@@ -1358,11 +1447,30 @@ function renderPayDocCreditorDropdown(list = []) {
         chk.id = `paydoc_creditor_chk_${idx}`;
         if (selectedPayDocCreditors.has(name)) chk.checked = true;
 
+        // Custom checkbox visual element
+        const chkVisual = document.createElement('span');
+        chkVisual.className = 'checkbox-visual';
+
         const span = document.createElement('span');
         span.className = 'creditor-name';
-        span.textContent = name;
+
+        if (q.length > 0) {
+            const low = (name || '').toString().toLowerCase();
+            const i = low.indexOf(q);
+            if (i >= 0) {
+                const before = escapeHtml(name.slice(0, i));
+                const matchText = escapeHtml(name.slice(i, i + q.length));
+                const after = escapeHtml(name.slice(i + q.length));
+                span.innerHTML = `${before}<span class="match">${matchText}</span>${after}`;
+            } else {
+                span.textContent = name;
+            }
+        } else {
+            span.textContent = name;
+        }
 
         label.appendChild(chk);
+        label.appendChild(chkVisual);
         label.appendChild(span);
         frag.appendChild(label);
     });
@@ -1372,18 +1480,28 @@ function renderPayDocCreditorDropdown(list = []) {
     panel.querySelectorAll('.paydoc-creditor-checkbox').forEach(cb => {
         cb.addEventListener('change', (e) => {
             const nm = e.target.dataset.name;
-            if (e.target.checked) selectedPayDocCreditors.add(nm);
-            else selectedPayDocCreditors.delete(nm);
+            const parentLabel = e.target.closest('.creditor-item');
+            if (e.target.checked) {
+                selectedPayDocCreditors.add(nm);
+                if (parentLabel) parentLabel.classList.add('is-checked');
+            } else {
+                selectedPayDocCreditors.delete(nm);
+                if (parentLabel) parentLabel.classList.remove('is-checked');
+            }
             updatePayDocSelectedChips();
+            updateCreditorCountBadge('payDocCreditorDropdown');
             updateDateSummary();
         });
     });
+
+    // Update count badge
+    updateCreditorCountBadge('payDocCreditorDropdown');
 }
 
 function filterPayDocCreditorDropdown(q = '', forceOpen = false) {
     const query = (q || '').toString().trim().toLowerCase();
     const filtered = creditorData.filter(n => n.toLowerCase().includes(query));
-    renderPayDocCreditorDropdown(filtered);
+    renderPayDocCreditorDropdown(filtered, q);
     const dropdown = document.getElementById('payDocCreditorDropdown');
     if (!dropdown) return;
     // Only open the dropdown when forced (user clicked) or when user typed something (query length > 0)
